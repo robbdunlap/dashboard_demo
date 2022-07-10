@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- This is from https://www.youtube.com/watch?v=ugSBaOT0rVI&list=PLXsFtK46HZxXS9yBHkQXvaw1eLSIS5Mb-&index=3  -->
+
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+    <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+    
+    <title>PyScript x Altair</title>
+    
+    <py-env>
+- altair
+- pandas
+- vega_datasets
+    </py-env>
+    
+</head>
+<body>
+
+    <h1 style="font-size: 2.5em">Exploring IMDB Movies Datasets with PyScript</h1>
+    
+    <div id="dashboard"></div>
+
+    <py-script output="dashboard">
+
+from vega_datasets import data 
+import altair as alt
+
+movie_data = data.movies.url
+pts = alt.selection(type="single", encodings=['x'])
+brush = alt.selection(type="interval")
+
+rect = alt.Chart(movie_data).mark_point().encode(
+    alt.X('IMDB_Rating:Q'),
+    alt.Y('Rotten_Tomatoes_Rating:Q'),
+    color=alt.condition(brush, 'MPAA_Rating:O', alt.value('lightgray'))
+).add_selection(
+    brush
+)
+
+text = alt.Chart(movie_data).mark_text().encode(
+        y=alt.Y('row_number:O', axis=None)
+).transform_window(
+    row_number='row_number()'
+).transform_filter(
+    brush
+).transform_window(
+    rank='rank(row_number)'
+).transform_filter(
+    alt.datum.rank < 20
+) 
+
+ratings_rotten = text.encode(
+    text="Rotten_Tomatoes_Rating:Q"
+)
+
+ratings_imdb = text.encode(
+    text = "IMDB_Rating:Q"
+)
+
+movie_title = text.encode(
+    text = "Title:N"
+)
+
+movie_rating = text.encode(
+    text = "MPAA_Rating:O"
+)
+
+bar = alt.Chart(movie_data).mark_bar().encode(
+    x = "Major_Genre:N",
+    y="count()"
+).add_selection(
+    pts
+)
+
+<!--  shorthand notation for grouping and displaying graphs-->
+<!-- (rect | ratings_rotten | ratings_imdb | movie_title) & bar -->
+<!-- (rect | bar) & (ratings_rotten | ratings_imdb | movie_title) -->
+
+<!-- formal notation for grouping and displaying graphs -->
+alt.vconcat(
+    (rect | ratings_rotten | ratings_imdb | movie_title | movie_rating),
+    bar
+).resolve_legend(
+    color="independent",
+    size="independent"
+)
+
+
+    </py-script>
+</body> 
+</html>
